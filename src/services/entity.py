@@ -1,7 +1,6 @@
 """Модели используемые приложением"""
 from dataclasses import dataclass
 from enum import Enum
-import random
 from typing import List, Optional
 
 
@@ -59,7 +58,7 @@ class Meal:
     def format_short_data(self) -> str:
         """Показать короткую информацию о рецепте"""
         return f'{self.meal_id}: {self.meal_label}. Кол-во ингредиентов: '\
-            f'{len(self.meal_ingredients)}'
+            f'{len(self.meal_ingredients)}\n'
 
 
 class DayOfWeek(Enum):
@@ -98,21 +97,22 @@ class DailyMealPlan:
 
 @dataclass
 class CartElement:
-    cart_id: int
+    cart_order: int
     ingredient_label: str
     total_value: int
-    cart_type: str
+    ingredient_type: str
     is_ingredient_bought: bool
 
     def __init__(
         self,
+        cart_order: int,
         ingredient_label: Optional[str] = None,
         total_value: Optional[int] = None,
         ingredient_type: Optional[str] = None,
         ingredient: Optional[Ingredient] = None,
         is_ingredient_bought: bool = False
     ):
-        self.cart_id = random.randint(0, 1000)
+        self.cart_order = cart_order
         self.is_ingredient_bought = is_ingredient_bought
         if ingredient is not None:
             self.from_ingredient(ingredient=ingredient)
@@ -121,17 +121,19 @@ class CartElement:
                 raise TypeError('Not found ingredient types')
             self.ingredient_label = ingredient_label
             self.total_value = total_value
-            self.cart_type = ingredient_type
+            self.ingredient_type = ingredient_type
 
     def from_ingredient(self, ingredient: Ingredient):
         self.ingredient_label = ingredient.ingredient_label
         self.total_value = ingredient.ingredient_quantity
-        self.cart_type = ingredient.ingredient_quantity_type.quantity_label
+        self.ingredient_type = ingredient.ingredient_quantity_type.quantity_label
 
     def add_value(self, value: int, cart_type: str):
-        if self.cart_type != cart_type:
+        if self.ingredient_type != cart_type:
             print('WARNING: not compatible type')
         self.total_value += value
 
     def is_ingredient_equal(self, ingredient: Ingredient) -> bool:
         return self.ingredient_label == ingredient.ingredient_label
+
+AVAILABLE_SEPARATORS = [':', ';', '-']

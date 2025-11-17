@@ -1,6 +1,6 @@
 from typing import List
 import services.entity as entity
-import fake_database
+from database import fake_database
 
 
 def insert_cart(cart: List[entity.CartElement]):
@@ -18,7 +18,7 @@ def get_cart() -> List[entity.CartElement]:
 
 def update_item_bought(item_id: int) -> bool:
     for el in fake_database.cart_list:
-        if el.cart_id == item_id:
+        if el.cart_order == item_id:
             el.is_ingredient_bought = True
             return True
     return False

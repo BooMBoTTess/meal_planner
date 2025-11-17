@@ -1,6 +1,5 @@
 """Управление сервисом через тг бота"""
-import src.basket_service
-import main
+from services import basket_service, calendar_service, recipe_service
 import os
 import logging
 import sys
@@ -9,12 +8,10 @@ from typing import Any, Dict, List, Tuple
 import telebot
 from dotenv import load_dotenv
 from telebot import types
-from telebot import apihelper
 
-import calendar_service
 import services.entity as entity
-import text_template
-import recipe_service
+from services.recipe_service import get_ingredients_from_text
+from telegram_controller import text_template
 
 logger = logging.getLogger('bot')
 formatter = logging.Formatter(
@@ -68,7 +65,7 @@ def create_cart_keyboard(cart: List[entity.CartElement]) -> types.ReplyKeyboardM
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     for el in cart:
         button = types.KeyboardButton(
-            text=str(el.cart_id) + ': ' + str(el.ingredient_label)
+            text=str(el.cart_order) + ': ' + str(el.ingredient_label)
         )
         keyboard.add(button)  # type: ignore
     button = types.KeyboardButton(text=text_template.KEYBOARD_BUTTON_CANCEL)
@@ -108,6 +105,8 @@ KEYBOARD_STOP = create_stop_keyboard()
 KEYBOARD_DAYS = create_days_keyboard()
 
 KEYBOARD_START = create_start_keyboard()
+
+
 
 
 @bot.message_handler(commands=['start'])  # type: ignore
@@ -178,7 +177,7 @@ def branch_create_ingredient(message: types.Message):
     else:
         try:  # Проверка вдруг были отправлены ингредиенты
             text = str(message.text)
-            ingredients = _get_ingredients_from_message(text)
+            ingredients = get_ingredients_from_text(text=text, separator=':')
         except ValueError:
             bot.send_message(
                 chat_id=message.chat.id,
@@ -188,20 +187,6 @@ def branch_create_ingredient(message: types.Message):
                 message=message, callback=branch_create_ingredient)
         else:
             _create_ingredient(message=message, ingredients=ingredients)
-
-
-def _get_ingredients_from_message(text: str) -> List[entity.Ingredient]:
-    ingredients: List[entity.Ingredient] = []
-    lines = text.split('\n')
-    for line in lines:
-        name, value = line.split(':')
-        value = int(value)
-        ingredient = recipe_service.create_ingredient(
-            label=name,
-            quantity=value
-        )
-        ingredients.append(ingredient)
-    return ingredients
 
 
 def _create_ingredient(message: types.Message, ingredients: List[entity.Ingredient]):
@@ -223,7 +208,7 @@ def loop_create_ingredient(message: types.Message):
     if text != text_template.KEYBOARD_STOP_CREATE_INGREDIENT:
         # Добавляем ингредиент
         try:
-            ingredients = _get_ingredients_from_message(text)
+            ingredients = get_ingredients_from_text(text)
         except ValueError:
             bot.send_message(chat_id=message.chat.id,
                              text=text_template.INCORRECT_INGREDIENT_MESSAGE)
@@ -392,12 +377,38 @@ def take_cart_element(message: types.Message):
                 reply_markup=KEYBOARD_START
             )
 
+@bot.message_handler(commands=['add_cart_item'])  # type: ignore
+def add_cart_item_command(message: types.Message):
+    """Команда на добавление ингредиента в корзину"""
+    
+    msg = text_template.ADD_CART_ITEM
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=msg,
+        reply_markup=create_cart_keyboard(cart=[]) # TODO: Переделать на клавиатуру отмены
+    )
+    bot.register_next_step_handler(  # type: ignore
+        message=message, callback=add_cart_item)
+
+def add_cart_item(message: types.Message):
+    text = str(message.text)
+    cart = basket_service.get_cart()
+    label, quantity = text.split(':', maxsplit=1)
+    quantity = int(quantity)
+    ingredient = recipe_service.create_ingredient(label=label, quantity=quantity)
+    basket_service.add_ingredient_to_cart(
+        cart_elements=cart, 
+        ingredient=ingredient
+        )
+    
+    bot.send_message(
+    chat_id=message.chat.id,
+    text=f'Успешно Добавлен ингредиент: {label, quantity}',
+    reply_markup=types.ReplyKeyboardRemove()
+)
+    
+   
+
+
 
 KEYBOARD_START = create_start_keyboard()  # type: ignore
-
-main.start()
-logger.info('start bot polling')
-try:
-    bot.infinity_polling()  # type: ignore
-except apihelper.ApiHTTPException:
-    logger.error(msg='ApiHTTPException', exc_info=True)

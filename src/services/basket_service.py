@@ -1,7 +1,6 @@
 from typing import List
-import fake_database
+from database import fake_database, basket_manager
 import services.entity as entity
-import basket_manager
 
 
 def create_week_ingrediend_list() -> List[entity.CartElement]:
@@ -37,11 +36,12 @@ def format_week_cart(cart_list: List[entity.CartElement]) -> str:
     """Отформатировать недельную корзину"""
     msg = ''
     for el in cart_list:
-        msg += f'{el.cart_id}: {el.ingredient_label}: {el.total_value} {el.cart_type}\n'
+        msg += f'{el.cart_order}: {el.ingredient_label}: {el.total_value} {el.ingredient_type}\n'
     return msg
 
 
 def _find_cart_index(cart_elements: List[entity.CartElement], ingredient: entity.Ingredient):
+    """Найти идентичные экземпляры корзины, которые уже есть."""
     for i in range(len(cart_elements)):
         if cart_elements[i].is_ingredient_equal(ingredient=ingredient):
             return i
@@ -52,7 +52,7 @@ def add_ingredient_to_cart(cart_elements: List[entity.CartElement], ingredient: 
     cart_index = _find_cart_index(
         cart_elements=cart_elements, ingredient=ingredient)
     if cart_index == -1:
-        tmp = entity.CartElement(ingredient=ingredient)
+        tmp = entity.CartElement(cart_order=len(cart_elements), ingredient=ingredient)
         cart_elements.append(tmp)
     else:
         cart_elements[cart_index].add_value(

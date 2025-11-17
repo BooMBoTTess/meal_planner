@@ -1,5 +1,6 @@
-from typing import List, Optional, Union
-import fake_database
+from typing import List, Optional
+from database import fake_database
+from services import entity
 import services.entity as entity
 
 
@@ -58,3 +59,66 @@ def add_ingredient(meal: entity.Meal, *ingredients: entity.Ingredient) -> entity
     for ing in ingredients:
         meal.add_ingredient(ing)
     return meal
+
+
+def _get_ingredients_known_separator(
+        text: str,
+        separator: str
+        ) -> List[entity.Ingredient]:
+    """Получить ингредиенты с известным сепаратором"""
+    ingredients: List[entity.Ingredient] = []
+    lines = text.split('\n')
+    
+    for line in lines:
+        name, value = line.split(sep=separator)
+        value = int(value)
+        ingredient = create_ingredient(
+            label=name,
+            quantity=value
+        )
+        ingredients.append(ingredient)
+    return ingredients
+
+
+def _get_ingredients_unknown_separator(
+        text: str,
+        ) -> List[entity.Ingredient]:
+    """Получить ингредиент с неизвестным разделителем."""
+    separators = entity.AVAILABLE_SEPARATORS
+    ingredients: List[entity.Ingredient] = []
+    lines = text.split('\n')
+    sep_counter = 0
+    for line in lines:
+        sep_counter = 0
+        separator = separators[sep_counter]
+        while line.find(separator) == -1:
+            sep_counter += 1
+            separator = separators[sep_counter]
+        name, value = line.split(sep=separator, maxsplit=1)
+        value = int(value)
+        ingredient = create_ingredient(
+            label=name,
+            quantity=value
+        )
+        ingredients.append(ingredient)
+    return ingredients
+
+def get_ingredients_from_text(
+        text: str, 
+        separator: Optional[str] = None
+    ) -> List[entity.Ingredient]:
+    """Получить ингредиент по тексту.
+
+    Args:
+        text: Текст сообщения.
+        separator: Разделитель названия и значения. Если не указано то попробует 
+            с несколькими из entity.
+
+    Return: 
+        Список ингредиентов
+    """
+    if separator is None:
+        ingredients = _get_ingredients_unknown_separator(text=text)
+    else:
+        ingredients = _get_ingredients_known_separator(text=text, separator=separator)
+    return ingredients

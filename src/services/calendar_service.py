@@ -1,6 +1,6 @@
 from typing import Dict, List
 import services.entity as entity
-import fake_database
+from database import fake_database
 
 
 def add_meal_to_day(day_id: int, meal: entity.Meal):
@@ -11,7 +11,6 @@ def add_meal_to_day(day_id: int, meal: entity.Meal):
 def get_weekly_plan() -> Dict[entity.DayOfWeek, List[entity.Meal]]:
     """Получить весь недельный план"""
     return {plan.day: plan.meals for plan in fake_database.weekly_plan}
-
 
 def get_formatted_weekly_plan() -> str:
     """Получить сообщение с форматированным недельным планом"""

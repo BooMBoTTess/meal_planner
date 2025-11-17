@@ -1,7 +1,6 @@
-"""Для запуска нужных сервисов и проверки"""
 from services import calendar_service, recipe_service, basket_service
 
-def start():
+def create_all():
     meal = recipe_service.create_meal('Флоцки')
     i1 = recipe_service.create_ingredient('Макароны', 200)
     i2 = recipe_service.create_ingredient('Фарш', 200)
@@ -36,7 +35,3 @@ def start():
     bs = basket_service.get_or_create_cart()
     print(basket_service.format_week_cart(bs))
     
-
-
-if __name__ == '__main__':
-    start()
