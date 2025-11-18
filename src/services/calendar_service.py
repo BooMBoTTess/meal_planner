@@ -28,7 +28,3 @@ def clear_week():
     """Очистить весь недельный план"""
     fake_database.weekly_plan = [
         el.clear_day() for el in fake_database.weekly_plan]
-
-# def remove_meal_from_day(self, day: DayOfWeek, meal_id: int):
-#     """Удалить блюдо из определенного дня недели"""
-#     self.weekly_plan[day].remove_meal(meal_id)

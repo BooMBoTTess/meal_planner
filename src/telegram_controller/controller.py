@@ -1,4 +1,5 @@
 """Управление сервисом через тг бота"""
+from logger_wrapper import wrap_logger
 from services import basket_service, calendar_service, recipe_service
 import os
 import logging
@@ -12,18 +13,6 @@ from telebot import types
 import services.entity as entity
 from services.recipe_service import get_ingredients_from_text
 from telegram_controller import text_template
-
-logger = logging.getLogger('bot')
-formatter = logging.Formatter(
-    '%(asctime)s (%(filename)s:%(lineno)d %(threadName)s) %(levelname)s - %(name)s: "%(message)s"'
-)
-
-
-console_output_handler = logging.StreamHandler(sys.stdout)
-console_output_handler.setFormatter(formatter)
-logger.addHandler(console_output_handler)
-
-logger.setLevel(logging.DEBUG)
 
 load_dotenv()
 BOT_TOKEN: str = os.getenv('BOT_TOKEN', default='NOT FOUND')
@@ -78,12 +67,14 @@ def _get_all_commands():
     handlers: List[Dict[str, Any]] = bot.message_handlers  # type: ignore
     commands: List[str] = []
     for handler in handlers:
-        command = handler['filters']['commands']
-        commands.extend(command)
+        try:
+            command = handler['filters']['commands']
+            commands.extend(command)
+        except:
+            pass
     text_commands: List[str] = []
     for command in commands:
         text_commands.append('/' + command)
-    logger.debug(text_commands)
     return text_commands
 
 
@@ -110,6 +101,7 @@ KEYBOARD_START = create_start_keyboard()
 
 
 @bot.message_handler(commands=['start'])  # type: ignore
+@wrap_logger
 def start_message(message: types.Message):
     """Привет!"""
     handlers: List[Dict[str, Any]] = bot.message_handlers  # type: ignore
@@ -124,16 +116,15 @@ def start_message(message: types.Message):
         reply_markup=KEYBOARD_START
     )
 
-
 @bot.message_handler(commands=['create_recipe'])  # type: ignore
+@wrap_logger
 def start_recipe_creating(message: types.Message):
     """Процесс создания рецепта"""
-    logger.info('start_recipe_creating')
     bot.send_message(message.chat.id, text_template.START_RECIPE_CREATING)
     bot.register_next_step_handler(  # type: ignore
         message=message, callback=create_recipe)
 
-
+@wrap_logger
 def create_recipe(message: types.Message):
     """Создать новый рецепт.
 
@@ -141,11 +132,8 @@ def create_recipe(message: types.Message):
 
     Название рецепта это текст из сообщения.
     """
-    logger.info('create_recipe')
     if message.text is not None:
-        meal = recipe_service.create_meal(message.text)
-        logger.debug(meal)
-
+        recipe_service.create_meal(message.text)
         bot.send_message(chat_id=message.chat.id,
                          text=text_template.ASK_FIRST_CREATE_INGREDIENT,
                          reply_markup=KEYBOARD_YES_NO)
@@ -156,7 +144,7 @@ def create_recipe(message: types.Message):
         bot.send_message(chat_id=message.chat.id,
                          text='Некорректный вид сообщения')
 
-
+@wrap_logger
 def branch_create_ingredient(message: types.Message):
     """Выбор пользователя о создании ингредиента"""
     text = message.text
@@ -188,7 +176,6 @@ def branch_create_ingredient(message: types.Message):
         else:
             _create_ingredient(message=message, ingredients=ingredients)
 
-
 def _create_ingredient(message: types.Message, ingredients: List[entity.Ingredient]):
     meal = recipe_service.get_last_user_meal()
     meal.add_ingredients(ingredients=ingredients)
@@ -198,12 +185,10 @@ def _create_ingredient(message: types.Message, ingredients: List[entity.Ingredie
                      reply_markup=KEYBOARD_STOP)
     bot.register_next_step_handler(  # type: ignore
         message=message, callback=loop_create_ingredient)
-    logger.debug(meal)
 
-
+@wrap_logger
 def loop_create_ingredient(message: types.Message):
     """Цикл по созданию ингредиентов для блюда"""
-    logger.info('loop_create_ingredient')
     text = str(message.text)
     if text != text_template.KEYBOARD_STOP_CREATE_INGREDIENT:
         # Добавляем ингредиент
@@ -220,7 +205,6 @@ def loop_create_ingredient(message: types.Message):
     else:
         # Конец добавление ингредиентов
         meal = recipe_service.get_last_user_meal()
-        logger.debug(meal.format_ingredients_list())
         msg = meal.format_ingredients_list()
         msg = '<pre>' + msg + '</pre>'
         bot.send_message(
@@ -232,7 +216,7 @@ def loop_create_ingredient(message: types.Message):
         bot.register_next_step_handler(  # type: ignore
             message=message, callback=add_last_meal_to_day)
 
-
+@wrap_logger
 def add_last_meal_to_day(message: types.Message):
     """После создания рецепта добавить его в день"""
     try:
@@ -244,14 +228,13 @@ def add_last_meal_to_day(message: types.Message):
                          text=text_template.SUCCESS_ADD_RECIPE_TO_DAY,
                          reply_markup=types.ReplyKeyboardRemove()
                          )
-        logger.debug(calendar_service.get_weekly_plan())
     except KeyError:
         bot.send_message(chat_id=message.chat.id,
                          text=text_template.CANCEL_RECIPE_TO_DAY,
                          reply_markup=types.ReplyKeyboardRemove()
                          )
 
-
+@wrap_logger
 def get_short_recipes(meals: List[entity.Meal]):
     res = ''
     for meal in meals:
@@ -260,6 +243,7 @@ def get_short_recipes(meals: List[entity.Meal]):
 
 
 @bot.message_handler(commands=['get_recipes'])  # type: ignore
+@wrap_logger
 def get_recipes(message: types.Message):
     """Получить все рецепты"""
     meals = recipe_service.get_meals()
@@ -271,6 +255,7 @@ def get_recipes(message: types.Message):
 
 
 @bot.message_handler(commands=['get_calendar'])  # type: ignore
+@wrap_logger
 def get_calendar(message: types.Message):
     """Получить все рецепты"""
     msg = calendar_service.get_formatted_weekly_plan()
@@ -281,6 +266,7 @@ def get_calendar(message: types.Message):
 
 
 @bot.message_handler(commands=['add_recipe_to_day'])  # type: ignore
+@wrap_logger
 def inform_add_recipe_to_calendar(message: types.Message):
     """Получить все рецепты"""
     meals = recipe_service.get_meals()
@@ -303,7 +289,7 @@ def _split_message(text: str) -> Tuple[int, int]:
     day_id, meal_id = int(day_id), int(meal_id)
     return day_id, meal_id
 
-
+@wrap_logger
 def add_recipe_to_calendar(message: types.Message):
     """Исполнение функции добавление рецепта в день"""
     text = str(message.text)
@@ -317,6 +303,7 @@ def add_recipe_to_calendar(message: types.Message):
 
 
 @bot.message_handler(commands=['get_cart'])  # type: ignore
+@wrap_logger
 def get_cart_list(message: types.Message):
     """Получить все рецепты"""
     cart = basket_service.get_or_create_cart()
@@ -333,6 +320,7 @@ def get_cart_list(message: types.Message):
 
 
 @bot.message_handler(commands=['create_new_cart'])  # type: ignore
+@wrap_logger
 def create_cart_list(message: types.Message):
     """Получить все рецепты"""
     cart = basket_service.create_week_ingrediend_list()
@@ -345,17 +333,17 @@ def create_cart_list(message: types.Message):
     bot.register_next_step_handler(  # type: ignore
         message=message, callback=take_cart_element)
 
-
+@wrap_logger
 def take_cart_element(message: types.Message):
     """Убрать элемент из списка"""
     text = str(message.text)
-    if text == text_template.KEYBOARD_BUTTON_CANCEL:
+    if text == text_template.KEYBOARD_BUTTON_CANCEL: # Нажал отмену
         bot.send_message(
             chat_id=message.chat.id,
             text=text_template.END_CART_PROCESS,
             reply_markup=KEYBOARD_START
         )
-    else:
+    elif text.find(':') != -1: # Нормальная работа
         item_id: int = int(text.split(':', maxsplit=1)[0])
         basket_service.buy_cart_item_by_id(item_id)
         cart = basket_service.get_cart()
@@ -376,11 +364,16 @@ def take_cart_element(message: types.Message):
                 text=text_template.END_CART_PROCESS,
                 reply_markup=KEYBOARD_START
             )
-
+    else:
+            bot.send_message(
+                chat_id=message.chat.id,
+                text=text_template.ERROR_CART_BUY,
+                reply_markup=types.ReplyKeyboardRemove()
+            )
 @bot.message_handler(commands=['add_cart_item'])  # type: ignore
+@wrap_logger
 def add_cart_item_command(message: types.Message):
     """Команда на добавление ингредиента в корзину"""
-    
     msg = text_template.ADD_CART_ITEM
     bot.send_message(
         chat_id=message.chat.id,
@@ -390,6 +383,7 @@ def add_cart_item_command(message: types.Message):
     bot.register_next_step_handler(  # type: ignore
         message=message, callback=add_cart_item)
 
+@wrap_logger
 def add_cart_item(message: types.Message):
     text = str(message.text)
     cart = basket_service.get_cart()
@@ -407,8 +401,5 @@ def add_cart_item(message: types.Message):
     reply_markup=types.ReplyKeyboardRemove()
 )
     
-   
-
-
 
 KEYBOARD_START = create_start_keyboard()  # type: ignore

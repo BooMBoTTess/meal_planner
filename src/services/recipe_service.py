@@ -15,6 +15,7 @@ def get_meal(meal_id: int) -> entity.Meal:
 
 
 def get_last_user_meal():
+    """Получить последнее блюдо пользователя"""
     return fake_database.meals[-1]
 
 
@@ -29,6 +30,7 @@ def create_meal(label: str) -> entity.Meal:
 
 
 def update_meal(meal: entity.Meal) -> None:
+    """Обновить блюдо"""
     fake_database.meals[meal.meal_id] = meal
 
 
