@@ -2,7 +2,7 @@ import logging
 from typing import Any, Callable
 import sys
 
-logger = logging.getLogger('Telegram')
+logger = logging.getLogger('TELEGRAM')
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s: %(message)s'
 )
@@ -16,7 +16,7 @@ logger.setLevel(logging.DEBUG)
 
 def wrap_logger(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        logger.info('TELEGRAM handled: %s', func.__name__)
+        logger.info(func.__name__)
         return func(*args, **kwargs)
     return wrapper
 
